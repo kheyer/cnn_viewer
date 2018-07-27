@@ -8,7 +8,8 @@ from ipywidgets.widgets import *
 def plot_cnn_visuals(PATH, filename, model, dpi=None,
 total_layers=None, composite=True, individuals=True, animation=True,
 composite_figsize=(96,96), animation_figsize=(12,12), resize=(256,256),
-resize_animation=(256,256), animation_interval=200, folder_suffix=1):
+resize_animation=(256,256), animation_interval=200, folder_suffix=1,
+return_acts=True):
     """
     Takes a trained convolutional model and the filename of an input image
     to generate images of network activations
@@ -53,7 +54,11 @@ resize_animation=(256,256), animation_interval=200, folder_suffix=1):
         folder_suffix : int, str default 1
             Suffix for the output directories created to save images
 
+        return_acts : boolean, default True
+            If True, function returns a list of activation tensors
+
     Returns:
+        If return_acts=True, returns list of activation tensors 
         Images are saved as .jpg files in the directories created
         Animations are saved as .mp4 files in the directory created
 
@@ -69,7 +74,7 @@ resize_animation=(256,256), animation_interval=200, folder_suffix=1):
     layer_outputs = [i for i in layer_outputs if i.dim() == 4]
 
     for i, layer in enumerate(layer_outputs):
-        print(i)
+        print('Processing Layer: ', i)
         features = layer.data
         images = features.cpu().numpy()[0]
         number_of_images = len(images)
@@ -83,6 +88,9 @@ resize_animation=(256,256), animation_interval=200, folder_suffix=1):
     if animation:
         save_animation(layer_outputs, PATH, figsize=animation_figsize, dpi=dpi,
                 resize=resize_animation, interval = animation_interval, suffix=folder_suffix)
+
+    if return_acts:
+        return layer_outputs
 
 
 def image_loader(path, resize=(256,256)):
@@ -141,7 +149,7 @@ def save_animation(layer_outputs, PATH, figsize=(10,10), dpi=100, resize=(256,25
     plt.axis('off')
     im_lst = []
     for i, layer in enumerate(layer_outputs):
-        print(i)
+        print('Animating Layer: ', i)
         features = layer.data
         images = features.cpu().numpy()[0]
 
@@ -177,7 +185,7 @@ def save_composite(ims, PATH, layer_num, rows=1, cols=None, figsize=(96,96), suf
 def save_individuals(ims, PATH, layer_num, suffix=1):
     """
     This function takes a tensor of activations for a single layer and
-    saves each slice as an individual image 
+    saves each slice as an individual image
     """
     dest = os.path.join(PATH, f'individuals{suffix}/')
     os.makedirs(dest, exist_ok=True)
