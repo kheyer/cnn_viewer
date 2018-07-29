@@ -1,11 +1,12 @@
 from .imports import *
 from .torch_imports import *
 from .core import *
+from .dataset import open_image
 from matplotlib import rcParams, animation, rc
 from ipywidgets import interact, interactive, fixed
 from ipywidgets.widgets import *
 
-def plot_cnn_visuals(PATH, filename, model, dpi=None,
+def plot_cnn_visuals(PATH, filename, model, transformer=None, dpi=None,
 total_layers=None, composite=True, individuals=True, animation=True,
 composite_figsize=(96,96), animation_figsize=(12,12), resize=(256,256),
 resize_animation=(256,256), animation_interval=200, folder_suffix=1,
@@ -20,6 +21,13 @@ return_acts=True):
         filename : filename of input image along PATH
 
         model : trained convolutional model (e.g. learn.model)
+
+        transformer : function to normalize and resize data as the model to what the
+            model was trained on
+                e.g. the val_tfms function from
+                trn_tfms, val_tfms = tfms_from_model(arch, sz)
+            If no function is given, the input image will be resized to a square and
+            normalized by the image_loader function
 
         dpi : int, default None
             dpi for image animation
@@ -58,20 +66,28 @@ return_acts=True):
             If True, function returns a list of activation tensors
 
     Returns:
-        If return_acts=True, returns list of activation tensors 
+        If return_acts=True, returns list of activation tensors
         Images are saved as .jpg files in the directories created
         Animations are saved as .mp4 files in the directory created
 
     """
     fn = PATH+filename
-    i = image_loader(fn, resize=resize)
+
+    if transformer is not None:
+        i = transformer(open_image(fn))
+        i = i[None]
+        i = torch.from_numpy(i)
+    else:
+        i = image_loader(fn, resize=resize)
+
     i = i.cuda()
+    model.eval()
     tmp_model = get_activation_layer(model)
     layer_outputs = tmp_model(V(i))
 
+    layer_outputs = [i for i in layer_outputs if i.dim() == 4]
     if total_layers is not None:
         layer_outputs = layer_outputs[:total_layers]
-    layer_outputs = [i for i in layer_outputs if i.dim() == 4]
 
     for i, layer in enumerate(layer_outputs):
         print('Processing Layer: ', i)
